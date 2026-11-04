@@ -61,3 +61,16 @@ mise lock --platform "$MISE_PLATFORM"
 assert_succeed "MISE_SAFE=1 mise install --force --locked"
 sed -i 's|^checksum = "sha256:.*"|checksum = "sha256:0000000000000000000000000000000000000000000000000000000000000000"|' mise.lock
 assert_fail "MISE_SAFE=1 mise install --force --locked"
+
+# An npm tool's dependency graph is project content: safe mode ignores it and
+# locked mode needs it, so together they fail with guidance that names the
+# conflict instead of the `mise lock` repair hint, which cannot help (#15363).
+echo '[tools]
+"npm:rimraf" = "6.0.1"' >mise.toml
+rm mise.lock
+mise lock --platform "$MISE_PLATFORM"
+assert_succeed "MISE_SAFE=1 mise install --force"
+mise uninstall --all npm:rimraf
+assert_fail "MISE_SAFE=1 mise install --force --locked" "safe mode ignores a project's dependency graphs"
+mise uninstall --all npm:rimraf
+assert_succeed "mise install --force --locked"

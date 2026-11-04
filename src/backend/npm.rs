@@ -1188,6 +1188,17 @@ impl Backend for NPMBackend {
             && ctx.locked
             && source_lockfile_version.is_some_and(|v| v >= 2)
         {
+            // Safe mode ignores a project lockfile's dependency graphs
+            // (`Lockfile::drop_what_needs_trust`), so the graph is missing
+            // here no matter how fresh `mise lock` is; point at the actual
+            // way out instead of the repair hint, which sends the user in
+            // circles.
+            if Settings::safe_mode() {
+                eyre::bail!(
+                    "npm:{} is pinned by a revision 2 lockfile, but safe mode ignores a project's dependency graphs, and locked mode needs them to install; unset MISE_SAFE or disable locked mode for this tool",
+                    self.display_tool_name()
+                );
+            }
             eyre::bail!(
                 "npm:{} has no embedded-aube dependency graph in the revision 2 lockfile; run `mise lock` to repair it or disable locked mode",
                 self.display_tool_name()
